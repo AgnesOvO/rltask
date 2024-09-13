@@ -1,0 +1,117 @@
+<?php
+  session_start();//啟動SESSION
+  
+  //$_SESSION["login_user"]有資料，代表已正常登入
+  if(isset($_SESSION["login_user"]))  {
+	header("location:main.php");
+	exit();
+  }
+  
+  //若未登入
+  if (isset($_POST["users"]))
+  {
+    require_once("dbconfig.php");
+		
+    //取得登入資料
+    $login_user = $_POST["users"]; 	
+    $login_password = $_POST["password"];
+	
+	//避免SQL Injection
+	$login_user_xx = mysqli_real_escape_string($link, $login_user);
+	$login_password_xx = mysqli_real_escape_string($link, $login_password);
+	
+    //比對，檢查帳號密碼是否正確
+    $sql = "SELECT username FROM users WHERE username = '$login_user_xx'
+            AND password = '$login_password_xx'";
+			
+	$result = mysqli_query($link, $sql);
+
+    //若沒找到資料，表示帳號密碼錯誤
+    if (mysqli_num_rows($result) == 0)
+    {
+      mysqli_free_result($result); //釋放$result佔用的記憶體
+      mysqli_close($link); //關閉資料庫連接
+      echo "<script type='text/javascript'>alert('帳號密碼錯誤，登入失敗')</script>"; //顯示訊息要求使用者輸入正確的帳號密碼
+	}
+	//如果帳號密碼正確
+    else { 	  
+	  //將使用者資料加入session
+      $row = mysqli_fetch_object($result);
+      $_SESSION["login_user"] = $row->username;
+      	
+	  //設置登入成功的session
+      $_SESSION['login_success'] = true;
+	  
+      mysqli_free_result($result);//釋放$result佔用的記憶體
+      mysqli_close($link); //關閉資料庫連接
+	  
+	  //設置 cookie 保存登入狀態
+      //setcookie("login_user", $_SESSION['login_user'], time() + (86400 * 7), "/"); // 設置一星期的cookie
+
+	  header("location:main.php"); //重定向至首頁
+	  exit();
+	}
+  }
+?>
+
+<style>
+.hd{
+	background-color: #71A3AF;
+}
+.form1{
+	width: 800px;
+	height: 30px;
+}
+</style>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset=utf-8" />
+<title>智慧型資料庫系統實驗室作業</title>
+<link rel="stylesheet" href="style.css" type="text/css" />
+
+</head>
+
+<body>
+<center>
+
+<div id="header">
+	<div id="content" class="hd">
+		<label>智慧型資料庫系統實驗室作業 - M11323027</a></label>
+    </div>
+</div>
+
+<div id="body">
+	<div id="content">
+    <form action="login.php" method="post" name="myForm" class="form1">
+      <table align="center">
+        <tr> 
+          <td bgcolor="#71A3AF" align="center"> 
+            <font color="white">帳號：</font>
+          </td>
+          <td>
+            <input type="text" name="users" size="15" required>
+          </td>
+        </tr>
+        <tr> 
+          <td bgcolor="#71A3AF" align="center"> 
+            <font color="white">密碼：</font>
+          </td>
+          <td>
+            <input type="password" name="password" size="15" required>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" colspan="2"> 
+            <input type="submit" value="登入">
+            <input type="reset" value="重填">
+          </td>
+        </tr>
+      </table>
+    </form>
+	</div>
+</div>
+</center>
+	
+ </body>
+</html>

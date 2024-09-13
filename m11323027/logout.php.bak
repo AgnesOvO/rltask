@@ -1,0 +1,13 @@
+<?php
+  session_start();
+  session_unset();
+  session_destroy();
+  
+  //清除cookie
+  if (isset($_COOKIE['login_user'])) {
+      setcookie("login_user", "", time() - 3600, "/"); //設置過去的時間(-3600sec)來刪除cookie
+  }
+  
+  header("location:index.php");		
+  exit();
+?>
