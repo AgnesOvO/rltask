@@ -15,7 +15,7 @@ if(isset($_GET['edit_id']))
     $edit_id = mysqli_real_escape_string($link, $_GET['edit_id']); //避免SQL Injection
     $username = $_SESSION["login_user"]; //取得目前登入的使用者名稱
 
-	//查詢此留言是否屬於目前登入的使用者
+	//選取範圍
     $sql_query = "SELECT * FROM comments WHERE id=$edit_id AND nickname=(SELECT nickname FROM users WHERE username='$username')";
     $result_set = mysqli_query($link, $sql_query);
 
@@ -96,16 +96,16 @@ if(isset($_POST['btn-cancel']))
     <form method="post" class="form3">
     <table align="center">
 
-    <tr>
-    <td><input type="text" name="content" placeholder="留言" value="<?php echo $fetched_row['content']; ?>" required /></td>
-    </tr>
+		<tr>
+			<td><input type="text" name="content" placeholder="留言" value="<?php echo $fetched_row['content']; ?>" required /></td>
+		</tr>
 
-    <tr>
-    <td>
-    <button type="submit" name="btn-update"><strong>更新<br>UPDATE</strong></button>
-    <button type="submit" name="btn-cancel"><strong>取消<br>Cancel</strong></button>
-    </td>
-    </tr>
+		<tr>
+			<td>
+				<button type="submit" name="btn-update"><strong>更新<br>UPDATE</strong></button>
+				<button type="submit" name="btn-cancel"><strong>取消<br>Cancel</strong></button>
+			</td>
+		</tr>
     </table>
     </form>
     </div>

@@ -22,20 +22,29 @@
       exit();
   }
 
-  include_once 'dbconfig.php';
-  if(isset($_GET['delete_id']))
-  {
-      $delete_id = mysqli_real_escape_string($link, $_GET['delete_id']);
-      $username = $_SESSION["login_user"];
-  
-      $sql_query = "DELETE FROM comments WHERE id=$delete_id AND nickname=(SELECT nickname FROM users WHERE username='$username')";
-      if(mysqli_query($link, $sql_query)){
-          echo "<script type='text/javascript'>alert('留言已刪除!'); window.location.href='main.php';</script>";
-      }
-      else{
-          echo "<script type='text/javascript'>alert('留言刪除失敗'); window.location.href='main.php';</script>";
-      }
-  }
+  //刪除留言
+include_once 'dbconfig.php';
+if(isset($_GET['delete_id']))
+{
+    $delete_id = mysqli_real_escape_string($link, $_GET['delete_id']); //避免SQL Injection
+    
+    $username = $_SESSION["login_user"]; //取得目前登入的使用者名稱
+    $sql_query = "DELETE FROM comments WHERE id=$delete_id AND nickname=(SELECT nickname FROM users WHERE username='$username')";
+    
+	//回傳true
+    if(mysqli_query($link, $sql_query)){
+        //檢查是否有行被刪除
+        if(mysqli_affected_rows($link) > 0){
+            echo "<script type='text/javascript'>alert('留言已刪除!'); window.location.href='main.php';</script>"; //刪除成功，提示成功，回主頁
+        } else {
+            echo "<script type='text/javascript'>alert('留言刪除失敗'); window.location.href='main.php';</script>"; //沒有任何data被刪除，提示失敗，回主頁
+        }
+    }
+    else{
+        //回傳false
+        echo "<script type='text/javascript'>alert('留言刪除失敗'); window.location.href='main.php';</script>";
+    }
+}
 ?>   
 
 <!DOCTYPE html>

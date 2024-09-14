@@ -16,7 +16,7 @@ if(isset($_POST['btn-save']))
     $content = $_POST['content']; //取得使用者留言
     $username = $_SESSION["login_user"]; //取得登入用戶名
     
-    // 獲取使用者的nickname
+    //取得使用者的nickname
     $sql_user = "SELECT nickname FROM users WHERE username = '$username'";
     $result_user = mysqli_query($link, $sql_user);
     $user_row = mysqli_fetch_assoc($result_user);
@@ -84,7 +84,7 @@ if(isset($_POST['btn-save']))
 			</tr>
 			
 			<tr>
-				<td><button type="submit" name="btn-save" colspan="2"><strong>儲存<br>SAVE</strong></button></td>
+				<td align="center"><button type="submit" name="btn-save"><strong>儲存<br>SAVE</strong></button>
 			</tr>
 		</table>
     </form>
