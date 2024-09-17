@@ -11,39 +11,52 @@ if(!isset($_SESSION["login_user"]))
 
 //新增留言
 include_once 'dbconfig.php'; //執行資料庫連線
-if(isset($_POST['btn-save']))
-{
-    $content = $_POST['content']; //取得使用者留言
-    $username = $_SESSION["login_user"]; //取得登入用戶名
-    
-    //取得使用者的nickname
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $content = $_POST['content']; // 取得留言
+    $username = $_SESSION["login_user"]; // 取得目前登入的使用者名稱
+
+    //取得nickname
     $sql_user = "SELECT nickname FROM users WHERE username = '$username'";
     $result_user = mysqli_query($link, $sql_user);
     $user_row = mysqli_fetch_assoc($result_user);
     $nickname = $user_row['nickname'];
 
-    $content_xx = mysqli_real_escape_string($link, $content); //避免SQL Injection
+    //新增留言至comments
+    $content_xx = mysqli_real_escape_string($link, $content);
     $nickname_xx = mysqli_real_escape_string($link, $nickname);
+    $sql_query = "INSERT INTO comments (content, nickname) VALUES ('$content_xx', '$nickname_xx')";
 
-    //將新增的content寫入comments資料表
-    $sql_query = "INSERT INTO comments(content, nickname) VALUES('$content_xx', '$nickname_xx')";
+    //上傳檔案處理
+    if (mysqli_query($link, $sql_query)) {
+        $comment_id = mysqli_insert_id($link); //取得留言的id
 
-    if(mysqli_query($link,$sql_query)){
-        ?>
-        <script type="text/javascript">
-        alert('已新增留言!');
-        window.location.href='main.php';
-        </script>
-        <?php
-    }
-    else{
-        ?>
-        <script type="text/javascript">
-        alert('發生錯誤!');
-        </script>
-        <?php
+        //處理上傳的檔案
+        $files = $_FILES['files']; //取得欲上傳的檔案
+        $allowedExts = ['pdf', 'doc', 'docx', 'jpg']; //允許的副檔名
+
+        for ($i = 0; $i < count($files['name']); $i++) {
+            $fileName = $files['name'][$i]; //取得欲上傳的檔案名稱
+            $fileTmpPath = $files['tmp_name'][$i];//取得檔案的路徑
+            $fileExt = pathinfo($fileName, PATHINFO_EXTENSION); //取得檔案的副檔名
+
+            //比對檔案的副檔名
+			if (in_array($fileExt, $allowedExts)) {
+                $destination = "uploads/".uniqid()."-".$fileName; //設定檔案名稱
+                move_uploaded_file($fileTmpPath, $destination);  //移動檔案
+
+                //儲存檔案資訊到資料庫
+                $sql_file = "INSERT INTO uploadfiles (comment_id, file_name, file_path) VALUES (?, ?, ?)";
+                $stmt = $link->prepare($sql_file);  //避免注入式攻擊
+                $stmt->bind_param("iss", $comment_id, $fileName, $destination); //避免注入式攻擊
+                $stmt->execute(); //執行insert
+            }
+        }
+        echo "<script type='text/javascript'>alert('留言新增成功!'); window.location.href='main.php';</script>";
+    } else {
+        echo "<script type='text/javascript'>alert('留言新增失敗!');</script>";
     }
 }
+
 ?>
 
 <style>
@@ -74,7 +87,7 @@ if(isset($_POST['btn-save']))
 
 <div id="body">
 	<div id="comment">
-    <form method="post" class="form2">
+    <form method="post" class="form2" enctype="multipart/form-data">
 		<table align="center">
 			<tr>
 				<td align="center"><a href="main.php">回到主頁<br>back to main page</a></td>
@@ -83,8 +96,16 @@ if(isset($_POST['btn-save']))
 				<td><input type="text" name="content" placeholder="留言" required /></td>
 			</tr>
 			
+			<!--上傳檔案欄位，可上傳多個檔案，且限制副檔名-->
 			<tr>
-				<td colspan="1"><button type="submit" name="btn-save"><strong>儲存<br>SAVE</strong></button>
+				<td>
+					<label for="files">附加檔案: </label><br>
+					<input type="file" name="files[]" id="files" multiple accept=".pdf,.doc,.docx,.jpg"> 
+				</td>
+			</tr>
+			
+			<tr>
+				<td align="center"><button type="submit" name="btn-save"><strong>儲存<br>SAVE</strong></button>
 			</tr>
 		</table>
     </form>

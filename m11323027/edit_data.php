@@ -31,30 +31,67 @@ if(isset($_GET['edit_id']))
 }
 
 //更新留言
-if(isset($_POST['btn-update']))
-{
+if (isset($_POST['btn-update'])) {
     $content = $_POST['content']; //取得留言
-    $content_xx = mysqli_real_escape_string($link, $content); //避免SQL Injection
+    $content_xx = mysqli_real_escape_string($link, $content); //避免注入式攻擊
 
-	//更新留言
+    //更新留言
     $sql_query = "UPDATE comments SET content='$content_xx' WHERE id=".$_GET['edit_id']." AND nickname=(SELECT nickname FROM users WHERE username='".$_SESSION["login_user"]."')";
 
-    if(mysqli_query($link, $sql_query))
-    {
+    if (mysqli_query($link, $sql_query)) {
+        //處理上傳的檔案
+        if (!empty($_FILES['files']['name'][0])) {
+            $files = $_FILES['files']; //取得欲上傳的檔案
+            $allowedExts = ['pdf', 'doc', 'docx', 'jpg']; //允許的副檔名
+
+            for ($i = 0; $i < count($files['name']); $i++) {
+                $fileName = $files['name'][$i]; //取得欲上傳的檔案名稱
+                $fileTmpPath = $files['tmp_name'][$i]; //取得檔案的路徑
+                $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION)); //取得檔案的副檔名
+
+				//比對檔案的副檔名
+                if (in_array($fileExt, $allowedExts)) { 
+                    $destination = "uploads/".uniqid()."-".$fileName; //設定檔案名稱
+                    move_uploaded_file($fileTmpPath, $destination); //移動檔案
+                    
+                    //儲存檔案資訊到資料庫
+                    $sql_file = "INSERT INTO uploadfiles (comment_id, file_name, file_path) VALUES (?, ?, ?)";
+                    $stmt = $link->prepare($sql_file);
+                    $stmt->bind_param("iss", $edit_id, $fileName, $destination);
+                    $stmt->execute(); //執行insert
+                }
+            }
+        }
         ?>
         <script type="text/javascript">
         alert('留言更新成功!');
         window.location.href='main.php';
         </script>
         <?php
-    }
-    else {
+    } else {
         ?>
         <script type="text/javascript">
         alert('留言更新失敗');
-		window.location.href='main.php';
+        window.location.href='main.php';
         </script>
         <?php
+    }
+}
+
+// 顯示已上傳的檔案
+function displayUploadedFiles($comment_id, $link) {
+    $sql_files = "SELECT file_name, file_path FROM uploadfiles WHERE comment_id = ?";
+    $stmt = $link->prepare($sql_files);
+    $stmt->bind_param("i", $comment_id);
+    $stmt->execute();
+    $result_files = $stmt->get_result();
+    
+    if ($result_files->num_rows > 0) {
+        while ($file = $result_files->fetch_assoc()) {
+            echo "<a href='" . htmlspecialchars($file['file_path'], ENT_QUOTES, 'UTF-8') . "' download>" . htmlspecialchars($file['file_name'], ENT_QUOTES, 'UTF-8') . "</a><br>";
+        }
+    } else {
+        echo "無附加檔案";
     }
 }
 
@@ -93,12 +130,24 @@ if(isset($_POST['btn-cancel']))
 
 <div id="body">
 	<div id="content">
-    <form method="post" class="form3">
+    <form method="post" class="form3" enctype="multipart/form-data">
     <table align="center">
 
 		<tr>
 			<td><input type="text" name="content" placeholder="留言" value="<?php echo $fetched_row['content']; ?>" required /></td>
 		</tr>
+
+        <tr>
+            <td>
+                <label for="files">附加檔案: </label><br>
+                <input type="file" name="files[]" id="files" multiple accept=".pdf,.doc,.docx,.jpg">
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <?php displayUploadedFiles($edit_id, $link); ?>
+            </td>
+        </tr>
 
 		<tr>
 			<td>

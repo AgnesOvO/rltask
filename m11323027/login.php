@@ -21,7 +21,7 @@
 	$login_password_xx = mysqli_real_escape_string($link, $login_password);
 	
     //比對，檢查帳號密碼是否正確
-    $sql = "SELECT username FROM users WHERE username = '$login_user_xx'
+    $sql = "SELECT * FROM users WHERE username = '$login_user_xx'
             AND password = '$login_password_xx'";
 			
 	$result = mysqli_query($link, $sql);
@@ -36,8 +36,9 @@
 	//如果帳號密碼正確
     else { 	  
 	  //將使用者資料加入session
-      $row = mysqli_fetch_object($result);
-      $_SESSION["login_user"] = $row->username;
+	  $row = mysqli_fetch_assoc($result);
+      $_SESSION["login_user"] = $row["username"];
+	  $_SESSION["nickname"] = $row["nickname"];
       	
 	  //設置登入成功的session
       $_SESSION['login_success'] = true;

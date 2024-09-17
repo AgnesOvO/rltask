@@ -22,11 +22,44 @@
       exit();
   }
 
-  //刪除留言
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $commentContent = $_POST['content'];
+    $files = $_FILES['files'];
+
+    //新增留言內容到資料庫
+    $sql = "INSERT INTO comments (nickname, content) VALUES (?, ?)";
+    $stmt = $link->prepare($sql);
+    $stmt->bind_param("ss", $nickname, $commentContent); //避免注入式攻擊
+    $stmt->execute(); //執行insert
+    $comment_id = $stmt->insert_id;
+
+    //處理上傳的檔案
+    for ($i = 0; $i < count($files['name']); $i++) {
+        $fileName = $files['name'][$i]; //取得欲上傳的檔案名稱
+        $fileTmpPath = $files['tmp_name'][$i]; //取得檔案的路徑
+        $fileExt = pathinfo($fileName, PATHINFO_EXTENSION); //取得檔案的副檔名
+		$allowedExts = ['pdf', 'doc', 'docx', 'jpg']; //允許的副檔名
+		
+		//比對檔案的副檔名
+        if (in_array($fileExt, $allowedExts)) {
+            $destination = "uploads/".uniqid()."-".$fileName; //設定檔案名稱
+            move_uploaded_file($fileTmpPath, $destination); //移動檔案
+
+            //儲存檔案資訊到資料庫
+            $sql = "INSERT INTO attachments (comment_id, file_name, file_path) VALUES (?, ?, ?)";
+            $stmt = $link->prepare($sql);
+            $stmt->bind_param("iss", $comment_id, $fileName, $destination);
+            $stmt->execute(); //執行insert
+        }
+    }
+}
+
+//刪除留言
 include_once 'dbconfig.php';
 if(isset($_GET['delete_id']))
 {
-    $delete_id = mysqli_real_escape_string($link, $_GET['delete_id']); //避免SQL Injection
+    $delete_id = mysqli_real_escape_string($link, $_GET['delete_id']); //避免注入式攻擊
     
     $username = $_SESSION["login_user"]; //取得目前登入的使用者名稱
     $sql_query = "DELETE FROM comments WHERE id=$delete_id AND nickname=(SELECT nickname FROM users WHERE username='$username')";
@@ -35,9 +68,9 @@ if(isset($_GET['delete_id']))
     if(mysqli_query($link, $sql_query)){
         //檢查是否有行被刪除
         if(mysqli_affected_rows($link) > 0){
-            echo "<script type='text/javascript'>alert('留言已刪除!'); window.location.href='main.php';</script>"; //刪除成功，顯示提示訊息並重新導向回主頁
+            echo "<script type='text/javascript'>alert('留言刪除成功!'); window.location.href='main.php';</script>"; //刪除成功，提示成功，回主頁
         } else {
-            echo "<script type='text/javascript'>alert('留言刪除失敗'); window.location.href='main.php';</script>"; // 如果沒有任何行被刪除，顯示刪除失敗的訊息並重新導向回主頁
+            echo "<script type='text/javascript'>alert('無法刪除這條留言!'); window.location.href='main.php';</script>"; //沒有任何data被刪除，提示失敗，回主頁
         }
     }
     else{
@@ -45,6 +78,7 @@ if(isset($_GET['delete_id']))
         echo "<script type='text/javascript'>alert('留言刪除失敗'); window.location.href='main.php';</script>";
     }
 }
+
 ?>   
 
 <!DOCTYPE html>
@@ -118,7 +152,7 @@ body, html {
 <div class="w3-top">
   <div class="w3-row w3-padding w3-black">
 	
-	<h1>Welcome, <?php echo htmlspecialchars($_SESSION["login_user"]); ?>!</h1>
+	<h1>Welcome, <?php echo htmlspecialchars($_SESSION["nickname"]); ?>!</h1>
 	
     <div class="w3-col s3">
       <button onclick="confirm_logout()">登出 Logout</button>
@@ -164,8 +198,31 @@ body, html {
 		{
 		?>
             <tr>
+			<!--Nickname-->
             <td><h4><?php echo $row[1]; ?></h4></td>
-            <td><h4><?php echo $row[2]; ?></h4></td>
+			<!--Content 1 留言內容-->
+            <td><h4><?php echo $row[2]; ?></h4>
+			<!--Content 2 附加檔案-->
+			<?php
+			//Display files related to each comment
+			$sql_files = "SELECT file_name, file_path FROM uploadfiles WHERE comment_id = ?";
+			$stmt = $link->prepare($sql_files);
+			$stmt->bind_param("i", $row[0]);
+			$stmt->execute();
+			$result_files = $stmt->get_result();
+
+			if ($result_files->num_rows > 0) {
+				//If files exist, display them
+				while ($file = $result_files->fetch_assoc()) {
+					echo "<a href='" . $file['file_path'] . "' download>" . $file['file_name'] . "</a><br>";
+				}
+			} else {
+				//If no files are found
+				echo "無附加檔案<br>";
+			}
+			?></td>
+			
+			<!--Time & Operations-->
             <td><h4><?php echo $row[3]; ?></h4></td>
             <td alt="center"><a href="javascript:edt_id('<?php echo $row[0]; ?>')"><img src="t_edit.png" alt="EDIT" /></a></td>
             <td alt="center"><a href="javascript:delete_id('<?php echo $row[0]; ?>')"><img src="t_drop.png" alt="DELETE" /></a></td>
